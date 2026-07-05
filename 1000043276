@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0f0f0f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="IronLog" />
+  <meta name="description" content="Трекер тренировок — упражнения, вес, повторения" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <title>IronLog</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600&display=swap');
+
+    :root {
+      --bg:       #0f0f0f;
+      --surface:  #1a1a1a;
+      --card:     #222222;
+      --border:   #2e2e2e;
+      --accent:   #e8ff00;
+      --accent2:  #ff6b35;
+      --text:     #f0f0f0;
+      --muted:    #888;
+      --danger:   #ff4444;
+      --radius:   12px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      overflow-x: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      z-index: 100;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .nav-btn {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      gap: 4px; padding: 10px 0; border: none; background: none;
+      color: var(--muted); font-size: 10px; font-family: 'Inter', sans-serif;
+      cursor: pointer; transition: color .2s;
+    }
+    .nav-btn svg { width: 22px; height: 22px; }
+    .nav-btn.active { color: var(--accent); }
+
+    /* ── SCREENS ── */
+    .screen { display: none; padding: 16px 16px 90px; min-height: 100dvh; }
+    .screen.active { display: block; }
+
+    /* ── HEADER ── */
+    .page-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .page-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 36px; letter-spacing: 2px; color: var(--accent);
+    }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 20px; border-radius: var(--radius);
+      border: none; cursor: pointer; font-family: 'Inter', sans-serif;
+      font-weight: 600; font-size: 14px; transition: all .15s;
+    }
+    .btn-primary { background: var(--accent); color: #000; }
+    .btn-primary:active { transform: scale(.97); background: #d4e800; }
+    .btn-danger  { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+    .btn-ghost   { background: var(--card); color: var(--text); }
+    .btn-sm      { padding: 8px 14px; font-size: 13px; }
+    .btn-icon    { padding: 10px; border-radius: 50%; background: var(--card); border: none; cursor: pointer; color: var(--text); display: flex; align-items: center; justify-content: center; }
+    .btn-icon svg { width: 20px; height: 20px; }
+
+    /* ── CARDS ── */
+    .exercise-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); margin-bottom: 12px; overflow: hidden;
+      transition: border-color .2s;
+    }
+    .exercise-card:active { border-color: var(--accent); }
+
+    .card-thumb {
+      width: 100%; height: 160px; object-fit: cover;
+      display: block; background: var(--surface);
+    }
+    .card-thumb-placeholder {
+      width: 100%; height: 160px; background: var(--surface);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--muted);
+    }
+    .card-body { padding: 14px; }
+    .card-name {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px; letter-spacing: 1px; margin-bottom: 4px;
+    }
+    .card-meta { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+
+    /* ── SETS ── */
+    .sets-list { display: flex; flex-direction: column; gap: 8px; }
+    .set-row {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--surface); border-radius: 8px; padding: 8px 10px;
+    }
+    .set-num {
+      font-family: 'Bebas Neue', sans-serif; font-size: 18px;
+      color: var(--accent); min-width: 24px;
+    }
+    .set-input {
+      flex: 1; background: var(--border); border: none; border-radius: 6px;
+      padding: 6px 10px; color: var(--text); font-family: 'Inter', sans-serif;
+      font-size: 14px; text-align: center; -webkit-appearance: none;
+    }
+    .set-input:focus { outline: 1px solid var(--accent); }
+    .set-label { font-size: 11px; color: var(--muted); min-width: 14px; text-align: center; }
+    .set-delete { background: none; border: none; cursor: pointer; color: var(--muted); padding: 4px; }
+    .set-delete svg { width: 16px; height: 16px; }
+
+    /* ── ADD SET ── */
+    .add-set-btn {
+      width: 100%; margin-top: 8px; padding: 9px;
+      background: transparent; border: 1px dashed var(--border);
+      border-radius: 8px; color: var(--muted); font-size: 13px;
+      cursor: pointer; font-family: 'Inter', sans-serif;
+      transition: border-color .2s, color .2s;
+    }
+    .add-set-btn:active { border-color: var(--accent); color: var(--accent); }
+
+    /* ── MODAL ── */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,.8);
+      z-index: 200; display: none; align-items: flex-end;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: var(--surface); border-radius: 20px 20px 0 0;
+      padding: 20px 16px 32px; width: 100%;
+      max-height: 92dvh; overflow-y: auto;
+      border-top: 1px solid var(--border);
+    }
+    .modal-handle {
+      width: 40px; height: 4px; background: var(--border);
+      border-radius: 2px; margin: 0 auto 20px;
+    }
+    .modal-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 28px; letter-spacing: 1px; margin-bottom: 20px;
+      color: var(--accent);
+    }
+
+    /* ── FORM ── */
+    .field { margin-bottom: 16px; }
+    .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; }
+    .field input, .field select, .field textarea {
+      width: 100%; background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px 14px; color: var(--text);
+      font-family: 'Inter', sans-serif; font-size: 15px; -webkit-appearance: none;
+    }
+    .field input:focus, .field select:focus, .field textarea:focus {
+      outline: none; border-color: var(--accent);
+    }
+    .field textarea { resize: none; height: 80px; }
+    .field select option { background: var(--card); }
+
+    /* ── PHOTO PICKER ── */
+    .photo-picker {
+      width: 100%; height: 140px; background: var(--card);
+      border: 1px dashed var(--border); border-radius: 8px;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 8px; cursor: pointer; position: relative;
+      overflow: hidden;
+    }
+    .photo-picker input[type=file] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; font-size: 0;
+    }
+    .photo-picker img {
+      position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+    }
+    .photo-picker-label { font-size: 13px; color: var(--muted); pointer-events: none; }
+    .photo-picker svg { color: var(--muted); width: 28px; height: 28px; pointer-events: none; }
+
+    /* ── HISTORY ── */
+    .history-day { margin-bottom: 24px; }
+    .history-date {
+      font-size: 12px; color: var(--muted); text-transform: uppercase;
+      letter-spacing: 1px; margin-bottom: 10px; font-weight: 600;
+    }
+    .history-item {
+      background: var(--card); border-radius: 10px; padding: 12px 14px;
+      margin-bottom: 8px; display: flex; gap: 12px; align-items: flex-start;
+    }
+    .history-item-thumb {
+      width: 50px; height: 50px; border-radius: 8px; object-fit: cover;
+      flex-shrink: 0; background: var(--surface);
+    }
+    .history-item-info { flex: 1; min-width: 0; }
+    .history-item-name { font-family: 'Bebas Neue', sans-serif; font-size: 18px; }
+    .history-item-sets { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    /* ── EMPTY STATE ── */
+    .empty {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; padding: 60px 20px; gap: 12px; text-align: center;
+    }
+    .empty svg { color: var(--border); width: 56px; height: 56px; }
+    .empty-title { font-family: 'Bebas Neue', sans-serif; font-size: 24px; color: var(--muted); }
+    .empty-sub   { font-size: 14px; color: var(--muted); max-width: 240px; }
+
+    /* ── STATS ── */
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+    .stat-card { background: var(--card); border-radius: var(--radius); padding: 16px; }
+    .stat-val { font-family: 'Bebas Neue', sans-serif; font-size: 36px; color: var(--accent); line-height: 1; }
+    .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    /* ── CHIP ── */
+    .chip { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+
+    /* ── ACTIONS ROW ── */
+    .actions-row { display: flex; gap: 8px; margin-top: 12px; }
+
+    /* toast */
+    #toast {
+      position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+      background: var(--accent); color: #000; padding: 10px 20px;
+      border-radius: 30px; font-size: 14px; font-weight: 600;
+      opacity: 0; pointer-events: none; transition: opacity .3s; z-index: 999;
+      white-space: nowrap;
+    }
+    #toast.show { opacity: 1; }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════ SCREENS ════════════════ -->
+
+<!-- TODAY -->
+<section class="screen active" id="screen-today">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Сегодня</div>
+      <div id="today-date" style="font-size:13px;color:var(--muted);margin-top:-4px"></div>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="openAddExercise()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Упражнение
+    </button>
+  </div>
+  <div id="today-list"></div>
+</section>
+
+<!-- LIBRARY -->
+<section class="screen" id="screen-library">
+  <div class="page-header">
+    <div class="page-title">Тренажёры</div>
+    <button class="btn btn-primary btn-sm" onclick="openAddMachine()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Добавить
+    </button>
+  </div>
+  <div id="machine-list"></div>
+</section>
+
+<!-- HISTORY -->
+<section class="screen" id="screen-history">
+  <div class="page-header">
+    <div class="page-title">История</div>
+  </div>
+  <div id="history-list"></div>
+</section>
+
+<!-- STATS -->
+<section class="screen" id="screen-stats">
+  <div class="page-header">
+    <div class="page-title">Статистика</div>
+  </div>
+  <div class="stats-grid" id="stats-grid"></div>
+  <div id="stats-detail"></div>
+</section>
+
+<!-- ════════════════ NAV ════════════════ -->
+<nav>
+  <button class="nav-btn active" onclick="showScreen('today')" id="nav-today">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    Сегодня
+  </button>
+  <button class="nav-btn" onclick="showScreen('library')" id="nav-library">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+    Тренажёры
+  </button>
+  <button class="nav-btn" onclick="showScreen('history')" id="nav-history">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    История
+  </button>
+  <button class="nav-btn" onclick="showScreen('stats')" id="nav-stats">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    Статистика
+  </button>
+</nav>
+
+<!-- ════════════════ MODAL: ADD MACHINE ════════════════ -->
+<div class="modal-backdrop" id="modal-machine">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="machine-modal-title">Новый тренажёр</div>
+
+    <div class="field">
+      <label>Название *</label>
+      <input type="text" id="machine-name" placeholder="Жим лёжа, Тяга блока…" />
+    </div>
+    <div class="field">
+      <label>Группа мышц</label>
+      <select id="machine-group">
+        <option value="">— выбрать —</option>
+        <option>Грудь</option><option>Спина</option><option>Плечи</option>
+        <option>Бицепс</option><option>Трицепс</option><option>Ноги</option>
+        <option>Ягодицы</option><option>Пресс</option><option>Кардио</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Описание / заметки</label>
+      <textarea id="machine-desc" placeholder="Техника выполнения, советы…"></textarea>
+    </div>
+    <div class="field">
+      <label>Фото тренажёра</label>
+      <div class="photo-picker" id="machine-photo-picker" onclick="document.getElementById('machine-photo-input').click()">
+        <input type="file" id="machine-photo-input" accept="image/*" onchange="previewMachinePhoto(event)" />
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <span class="photo-picker-label">Нажмите, чтобы выбрать фото</span>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:4px">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeMachineModal()">Отмена</button>
+      <button class="btn btn-primary" style="flex:1" onclick="saveMachine()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ MODAL: ADD EXERCISE TO TODAY ════════════════ -->
+<div class="modal-backdrop" id="modal-exercise">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Добавить упражнение</div>
+
+    <div class="field">
+      <label>Выберите тренажёр</label>
+      <select id="exercise-machine-select">
+        <option value="">— выбрать —</option>
+      </select>
+    </div>
+
+    <div id="sets-editor" style="display:none">
+      <div class="field">
+        <label>Подходы</label>
+        <div class="sets-list" id="sets-list"></div>
+        <button class="add-set-btn" onclick="addSet()">+ Добавить подход</button>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px">
+        <button class="btn btn-ghost" style="flex:1" onclick="closeExerciseModal()">Отмена</button>
+        <button class="btn btn-primary" style="flex:1" onclick="saveExercise()">Записать</button>
+      </div>
+    </div>
+
+    <div id="no-machine-hint" style="padding:20px 0;text-align:center;color:var(--muted);font-size:14px">
+      Сначала добавьте тренажёры в раздел «Тренажёры»
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════ STATE ═══════════════════
+let db = {
+  machines: [],   // {id, name, group, desc, photo, createdAt}
+  workouts: [],   // {id, date, machineId, sets:[{weight,reps}]}
+};
+let editMachineId = null;
+let currentSets = [];
+
+// ═══════════════════ PERSIST ═══════════════════
+function save() { localStorage.setItem('ironlog', JSON.stringify(db)); }
+function load() {
+  const raw = localStorage.getItem('ironlog');
+  if (raw) db = JSON.parse(raw);
+}
+
+// ═══════════════════ NAVIGATION ═══════════════════
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  if (name === 'today') renderToday();
+  if (name === 'library') renderLibrary();
+  if (name === 'history') renderHistory();
+  if (name === 'stats') renderStats();
+}
+
+// ═══════════════════ TOAST ═══════════════════
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ═══════════════════ TODAY ═══════════════════
+function todayKey() { return new Date().toISOString().slice(0, 10); }
+
+function renderToday() {
+  const today = todayKey();
+  const list = document.getElementById('today-list');
+  const workouts = db.workouts.filter(w => w.date === today);
+  document.getElementById('today-date').textContent = new Date().toLocaleDateString('ru-RU', { weekday:'long', day:'numeric', month:'long' });
+
+  if (!workouts.length) {
+    list.innerHTML = `<div class="empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6.5 6.5a5 5 0 1 1 7 7L12 15l-1.5-1.5a5 5 0 0 1 0-7z"/><path d="M15 9l3.5-3.5a2 2 0 0 0-2.83-2.83L12 6"/></svg>
+      <div class="empty-title">Тренировка не начата</div>
+      <div class="empty-sub">Нажмите «Упражнение», чтобы добавить первый подход</div>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = workouts.map(w => {
+    const m = db.machines.find(x => x.id === w.machineId) || { name: '?', photo: null, group: '' };
+    const setsText = w.sets.map((s, i) => `<span class="chip">${i+1}: ${s.weight}кг × ${s.reps}</span>`).join(' ');
+    const thumb = m.photo
+      ? `<img class="card-thumb" src="${m.photo}" alt="${m.name}" />`
+      : `<div class="card-thumb-placeholder"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>`;
+    return `<div class="exercise-card">
+      ${thumb}
+      <div class="card-body">
+        <div class="card-name">${m.name}</div>
+        <div class="card-meta">${m.group || ''}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">${setsText}</div>
+        <div class="actions-row">
+          <button class="btn btn-ghost btn-sm" onclick="editWorkout('${w.id}')">✏️ Изменить</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteWorkout('${w.id}')">Удалить</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function deleteWorkout(id) {
+  db.workouts = db.workouts.filter(w => w.id !== id);
+  save(); renderToday(); toast('Удалено');
+}
+
+// ═══════════════════ EXERCISE MODAL ═══════════════════
+function openAddExercise(workoutId) {
+  editMachineId = null;
+  currentSets = [{ weight: '', reps: '' }];
+  populateMachineSelect();
+  renderSets();
+  document.getElementById('exercise-machine-select').value = '';
+  toggleSetsEditor();
+  document.getElementById('modal-exercise').classList.add('open');
+}
+
+function closeExerciseModal() {
+  document.getElementById('modal-exercise').classList.remove('open');
+}
+
+function populateMachineSelect() {
+  const sel = document.getElementById('exercise-machine-select');
+  sel.innerHTML = '<option value="">— выбрать —</option>' +
+    db.machines.map(m => `<option value="${m.id}">${m.name}${m.group ? ' · ' + m.group : ''}</option>`).join('');
+  sel.onchange = toggleSetsEditor;
+}
+
+function toggleSetsEditor() {
+  const v = document.getElementById('exercise-machine-select').value;
+  document.getElementById('sets-editor').style.display = v ? 'block' : 'none';
+  document.getElementById('no-machine-hint').style.display = db.machines.length ? 'none' : 'block';
+  if (db.machines.length && !v) document.getElementById('no-machine-hint').style.display = 'none';
+}
+
+function addSet() {
+  currentSets.push({ weight: currentSets[currentSets.length-1]?.weight || '', reps: '' });
+  renderSets();
+}
+
+function renderSets() {
+  const list = document.getElementById('sets-list');
+  list.innerHTML = currentSets.map((s, i) => `
+    <div class="set-row">
+      <span class="set-num">${i+1}</span>
+      <input class="set-input" type="number" inputmode="decimal" min="0" step="0.5"
+        placeholder="0" value="${s.weight}"
+        onchange="currentSets[${i}].weight = this.value" />
+      <span class="set-label">кг</span>
+      <input class="set-input" type="number" inputmode="numeric" min="1" step="1"
+        placeholder="0" value="${s.reps}"
+        onchange="currentSets[${i}].reps = this.value" />
+      <span class="set-label">×</span>
+      ${currentSets.length > 1
+        ? `<button class="set-delete" onclick="removeSet(${i})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+           </button>`
+        : '<span style="width:24px"></span>'}
+    </div>`).join('');
+}
+
+function removeSet(i) {
+  currentSets.splice(i, 1);
+  renderSets();
+}
+
+function saveExercise() {
+  const machineId = document.getElementById('exercise-machine-select').value;
+  if (!machineId) { toast('Выберите тренажёр'); return; }
+  const sets = currentSets.filter(s => s.weight !== '' || s.reps !== '').map(s => ({
+    weight: parseFloat(s.weight) || 0,
+    reps: parseInt(s.reps) || 0
+  }));
+  if (!sets.length) { toast('Добавьте хотя бы один подход'); return; }
+
+  db.workouts.push({ id: Date.now().toString(), date: todayKey(), machineId, sets });
+  save(); closeExerciseModal(); renderToday(); toast('✅ Записано!');
+}
+
+function editWorkout(id) {
+  const w = db.workouts.find(x => x.id === id);
+  if (!w) return;
+  currentSets = w.sets.map(s => ({...s}));
+  populateMachineSelect();
+  document.getElementById('exercise-machine-select').value = w.machineId;
+  toggleSetsEditor();
+  renderSets();
+  document.getElementById('modal-exercise').classList.add('open');
+  // override save to update
+  const origSave = window.saveExercise;
+  window.saveExercise = function() {
+    const sets = currentSets.filter(s => s.weight !== '' || s.reps !== '').map(s => ({
+      weight: parseFloat(s.weight) || 0, reps: parseInt(s.reps) || 0
+    }));
+    if (!sets.length) { toast('Добавьте хотя бы один подход'); return; }
+    w.sets = sets;
+    w.machineId = document.getElementById('exercise-machine-select').value;
+    save(); closeExerciseModal(); renderToday(); toast('✅ Обновлено!');
+    window.saveExercise = origSave;
+  };
+}
+
+// ═══════════════════ MACHINE MODAL ═══════════════════
+let machinePhotoData = null;
+let editingMachineId = null;
+
+function openAddMachine() {
+  editingMachineId = null; machinePhotoData = null;
+  document.getElementById('machine-name').value = '';
+  document.getElementById('machine-group').value = '';
+  document.getElementById('machine-desc').value = '';
+  resetPhotoPreview();
+  document.getElementById('machine-modal-title').textContent = 'Новый тренажёр';
+  document.getElementById('modal-machine').classList.add('open');
+}
+
+function closeMachineModal() { document.getElementById('modal-machine').classList.remove('open'); }
+
+function resetPhotoPreview() {
+  const p = document.getElementById('machine-photo-picker');
+  p.querySelector('img')?.remove();
+  p.querySelector('svg').style.display = '';
+  p.querySelector('.photo-picker-label').style.display = '';
+}
+
+function previewMachinePhoto(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    machinePhotoData = ev.target.result;
+    const p = document.getElementById('machine-photo-picker');
+    let img = p.querySelector('img');
+    if (!img) { img = document.createElement('img'); p.appendChild(img); }
+    img.src = machinePhotoData;
+    p.querySelector('svg').style.display = 'none';
+    p.querySelector('.photo-picker-label').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function saveMachine() {
+  const name = document.getElementById('machine-name').value.trim();
+  if (!name) { toast('Введите название'); return; }
+  if (editingMachineId) {
+    const m = db.machines.find(x => x.id === editingMachineId);
+    m.name = name;
+    m.group = document.getElementById('machine-group').value;
+    m.desc = document.getElementById('machine-desc').value;
+    if (machinePhotoData) m.photo = machinePhotoData;
+  } else {
+    db.machines.push({
+      id: Date.now().toString(),
+      name, group: document.getElementById('machine-group').value,
+      desc: document.getElementById('machine-desc').value,
+      photo: machinePhotoData,
+      createdAt: new Date().toISOString()
+    });
+  }
+  save(); closeMachineModal(); renderLibrary(); toast('✅ Сохранено!');
+}
+
+// ═══════════════════ LIBRARY ═══════════════════
+function renderLibrary() {
+  const list = document.getElementById('machine-list');
+  if (!db.machines.length) {
+    list.innerHTML = `<div class="empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      <div class="empty-title">Нет тренажёров</div>
+      <div class="empty-sub">Добавьте тренажёры или упражнения, которые используете</div>
+    </div>`;
+    return;
+  }
+  list.innerHTML = db.machines.map(m => {
+    const thumb = m.photo
+      ? `<img class="card-thumb" src="${m.photo}" alt="${m.name}" />`
+      : `<div class="card-thumb-placeholder"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>`;
+    const count = db.workouts.filter(w => w.machineId === m.id).length;
+    return `<div class="exercise-card">
+      ${thumb}
+      <div class="card-body">
+        <div class="card-name">${m.name}</div>
+        <div class="card-meta">${m.group || ''} ${count ? '· ' + count + ' записей' : ''}</div>
+        ${m.desc ? `<div style="font-size:13px;color:var(--muted);margin-bottom:10px">${m.desc}</div>` : ''}
+        <div class="actions-row">
+          <button class="btn btn-ghost btn-sm" onclick="editMachine('${m.id}')">✏️ Изменить</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteMachine('${m.id}')">Удалить</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function editMachine(id) {
+  const m = db.machines.find(x => x.id === id);
+  if (!m) return;
+  editingMachineId = id;
+  machinePhotoData = null;
+  document.getElementById('machine-name').value = m.name;
+  document.getElementById('machine-group').value = m.group || '';
+  document.getElementById('machine-desc').value = m.desc || '';
+  resetPhotoPreview();
+  if (m.photo) {
+    machinePhotoData = m.photo;
+    const p = document.getElementById('machine-photo-picker');
+    let img = p.querySelector('img');
+    if (!img) { img = document.createElement('img'); p.appendChild(img); }
+    img.src = m.photo;
+    p.querySelector('svg').style.display = 'none';
+    p.querySelector('.photo-picker-label').style.display = 'none';
+  }
+  document.getElementById('machine-modal-title').textContent = 'Изменить тренажёр';
+  document.getElementById('modal-machine').classList.add('open');
+}
+
+function deleteMachine(id) {
+  if (!confirm('Удалить тренажёр? Все записи тренировок с ним также будут удалены.')) return;
+  db.machines = db.machines.filter(m => m.id !== id);
+  db.workouts = db.workouts.filter(w => w.machineId !== id);
+  save(); renderLibrary(); toast('Удалено');
+}
+
+// ═══════════════════ HISTORY ═══════════════════
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  if (!db.workouts.length) {
+    list.innerHTML = `<div class="empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <div class="empty-title">История пуста</div>
+      <div class="empty-sub">Результаты тренировок будут сохраняться здесь</div>
+    </div>`;
+    return;
+  }
+  const byDate = {};
+  db.workouts.forEach(w => { (byDate[w.date] = byDate[w.date] || []).push(w); });
+  const sorted = Object.keys(byDate).sort((a, b) => b.localeCompare(a));
+  list.innerHTML = sorted.map(date => {
+    const label = formatDate(date);
+    const items = byDate[date].map(w => {
+      const m = db.machines.find(x => x.id === w.machineId) || { name: '?', photo: null };
+      const setsSum = w.sets.reduce((acc, s) => acc + s.weight * s.reps, 0);
+      return `<div class="history-item">
+        ${m.photo
+          ? `<img class="history-item-thumb" src="${m.photo}" alt="${m.name}" />`
+          : `<div class="history-item-thumb" style="display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>`}
+        <div class="history-item-info">
+          <div class="history-item-name">${m.name}</div>
+          <div class="history-item-sets">${w.sets.length} подх. · ${setsSum.toFixed(1)} кг общий объём</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">
+            ${w.sets.map((s,i) => `<span class="chip">${i+1}: ${s.weight}кг×${s.reps}</span>`).join('')}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="history-day"><div class="history-date">${label}</div>${items}</div>`;
+  }).join('');
+}
+
+function formatDate(iso) {
+  const d = new Date(iso + 'T12:00:00');
+  const today = todayKey();
+  if (iso === today) return 'Сегодня';
+  const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+  if (iso === yesterday.toISOString().slice(0, 10)) return 'Вчера';
+  return d.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+// ═══════════════════ STATS ═══════════════════
+function renderStats() {
+  const totalWorkouts = [...new Set(db.workouts.map(w => w.date))].length;
+  const totalSets = db.workouts.reduce((a, w) => a + w.sets.length, 0);
+  const totalVolume = db.workouts.reduce((a, w) => a + w.sets.reduce((b, s) => b + s.weight * s.reps, 0), 0);
+  const uniqueMachines = [...new Set(db.workouts.map(w => w.machineId))].length;
+
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-card"><div class="stat-val">${totalWorkouts}</div><div class="stat-label">Дней тренировок</div></div>
+    <div class="stat-card"><div class="stat-val">${totalSets}</div><div class="stat-label">Всего подходов</div></div>
+    <div class="stat-card"><div class="stat-val">${(totalVolume/1000).toFixed(1)}т</div><div class="stat-label">Общий объём</div></div>
+    <div class="stat-card"><div class="stat-val">${uniqueMachines}</div><div class="stat-label">Упражнений</div></div>
+  `;
+
+  // top exercises
+  const machineVolume = {};
+  db.workouts.forEach(w => {
+    const v = w.sets.reduce((a, s) => a + s.weight * s.reps, 0);
+    machineVolume[w.machineId] = (machineVolume[w.machineId] || 0) + v;
+  });
+  const top = Object.entries(machineVolume).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+  if (top.length) {
+    const max = top[0][1];
+    document.getElementById('stats-detail').innerHTML = `
+      <div class="page-title" style="font-size:22px;margin-bottom:14px">ТОП УПРАЖНЕНИЙ</div>
+      ${top.map(([id, vol]) => {
+        const m = db.machines.find(x => x.id === id) || { name: '?' };
+        const pct = (vol / max * 100).toFixed(0);
+        return `<div style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-weight:600">${m.name}</span>
+            <span style="color:var(--muted);font-size:13px">${vol.toFixed(0)} кг</span>
+          </div>
+          <div style="background:var(--border);border-radius:4px;height:6px">
+            <div style="background:var(--accent);width:${pct}%;height:100%;border-radius:4px;transition:width .4s"></div>
+          </div>
+        </div>`;
+      }).join('')}`;
+  } else {
+    document.getElementById('stats-detail').innerHTML = '';
+  }
+}
+
+// ═══════════════════ BACKDROP CLOSE ═══════════════════
+document.querySelectorAll('.modal-backdrop').forEach(b => {
+  b.addEventListener('click', e => { if (e.target === b) b.classList.remove('open'); });
+});
+
+// ═══════════════════ INIT ═══════════════════
+load();
+renderToday();
+</script>
+
+<!-- Service Worker registration -->
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
